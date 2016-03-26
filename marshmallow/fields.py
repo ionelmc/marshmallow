@@ -121,11 +121,17 @@ class Field(FieldABC):
         'null': 'Field may not be null.',
         'validator_failed': 'Invalid value.'
     }
+    __slots__ = ("default", "attribute", "load_from", "dump_to", "validate", "validators",
+                 "allow_none", "required", "load_only", "dump_only", "missing", "metadata",
+                 "error_messages", "creation_index", "parent", "name")
+
 
     def __init__(self, default=missing_, attribute=None, load_from=None, dump_to=None,
                  error=None, validate=None, required=False, allow_none=None, load_only=False,
                  dump_only=False, missing=missing_, error_messages=None, **metadata):
         self.default = default
+        self.parent = None
+        self.name = None
         self.attribute = attribute
         self.load_from = load_from  # this flag is used by Unmarshaller
         self.dump_to = dump_to  # this flag is used by Marshaller
@@ -156,7 +162,7 @@ class Field(FieldABC):
         self.dump_only = dump_only
         self.missing = missing
         self.metadata = metadata
-        self._creation_index = Field._creation_index
+        self.creation_index = Field._creation_index
         Field._creation_index += 1
         self.parent = FieldABC.parent
 
@@ -326,6 +332,9 @@ class Field(FieldABC):
 
 class Raw(Field):
     """Field that applies no formatting or validation."""
+
+    __slots__ = ()
+
     pass
 
 class Nested(Field):
@@ -359,6 +368,7 @@ class Nested(Field):
     default_error_messages = {
         'type': 'Invalid type.',
     }
+    __slots__ = ("nested", "only", "exclude", "many", "__schema", "__updated_fields")
 
     def __init__(self, nested, default=missing_, exclude=tuple(), only=None,
                 many=False, **kwargs):
@@ -492,6 +502,8 @@ class List(Field):
         'invalid': 'Not a valid list.',
     }
 
+    __slots__ = ('container')
+
     def __init__(self, cls_or_instance, **kwargs):
         super(List, self).__init__(**kwargs)
         if isinstance(cls_or_instance, type):
@@ -559,6 +571,8 @@ class String(Field):
         'invalid': 'Not a valid string.'
     }
 
+    __slots__ = ()
+
     def __init__(self, *args, **kwargs):
         return super(String, self).__init__(*args, **kwargs)
 
@@ -579,6 +593,8 @@ class UUID(String):
         'invalid_guid': 'Not a valid UUID.'
     }
 
+    __slots__ = ()
+
     def _deserialize(self, value, attr, data):
         try:
             return uuid.UUID(value)
@@ -597,6 +613,8 @@ class Number(Field):
     default_error_messages = {
         'invalid': 'Not a valid number.'
     }
+
+    __slots__ = ("as_string")
 
     def __init__(self, as_string=False, **kwargs):
         self.as_string = as_string
@@ -641,6 +659,7 @@ class Integer(Number):
     default_error_messages = {
         'invalid': 'Not a valid integer.'
     }
+    __slots__ = ()
 
 
 class Decimal(Number):
@@ -675,6 +694,8 @@ class Decimal(Number):
     default_error_messages = {
         'special': 'Special numeric values are not permitted.',
     }
+
+    __slots__ = ("places", "rounding", "allow_nan")
 
     def __init__(self, places=None, rounding=None, allow_nan=False, as_string=False, **kwargs):
         self.places = decimal.Decimal((0, (1,), -places)) if places is not None else None
@@ -724,6 +745,8 @@ class Boolean(Field):
         'invalid': 'Not a valid boolean.'
     }
 
+    __slots__ = ()
+
     def _serialize(self, value, attr, obj):
         if value is None:
             return None
@@ -766,6 +789,8 @@ class FormattedString(Field):
     }
     _CHECK_ATTRIBUTE = False
 
+    __slots__ = ("src_str")
+
     def __init__(self, src_str, *args, **kwargs):
         Field.__init__(self, *args, **kwargs)
         self.src_str = text_type(src_str)
@@ -787,6 +812,7 @@ class Float(Number):
     """
 
     num_type = float
+    __slots__ = ()
 
 
 class DateTime(Field):
@@ -826,6 +852,8 @@ class DateTime(Field):
         'invalid': 'Not a valid datetime.',
         'format': '"{input}" cannot be formatted as a datetime.',
     }
+
+    __slots__ = ("dateformat")
 
     def __init__(self, format=None, **kwargs):
         super(DateTime, self).__init__(**kwargs)
@@ -885,6 +913,7 @@ class LocalDateTime(DateTime):
     Takes the same arguments as :class:`DateTime <marshmallow.fields.DateTime>`.
     """
     localtime = True
+    __slots__ = ()
 
 
 class Time(Field):
@@ -896,6 +925,7 @@ class Time(Field):
         'invalid': 'Not a valid time.',
         'format': '"{input}" cannot be formatted as a time.',
     }
+    __slots__ = ()
 
     def _serialize(self, value, attr, obj):
         if value is None:
@@ -927,6 +957,7 @@ class Date(Field):
         'invalid': 'Not a valid date.',
         'format': '"{input}" cannot be formatted as a date.',
     }
+    __slots__ = ()
 
     def _serialize(self, value, attr, obj):
         if value is None:
@@ -972,6 +1003,7 @@ class TimeDelta(Field):
         'invalid': 'Not a valid period of time.',
         'format': '{input!r} cannot be formatted as a timedelta.'
     }
+    __slots__ = ("precision")
 
     def __init__(self, precision='seconds', error=None, **kwargs):
         precision = precision.lower()
@@ -1028,6 +1060,7 @@ class Dict(Field):
     default_error_messages = {
         'invalid': 'Not a valid mapping type.'
     }
+    __slots__ = ()
 
     def _deserialize(self, value, attr, data):
         if isinstance(value, collections.Mapping):
@@ -1038,6 +1071,8 @@ class Dict(Field):
 
 class ValidatedField(Field):
     """A field that validates input on serialization."""
+
+    __slots__ = ()
 
     def _validated(self, value):
         raise NotImplementedError('Must implement _validate method')
@@ -1058,6 +1093,7 @@ class Url(ValidatedField, String):
     :param kwargs: The same keyword arguments that :class:`String` receives.
     """
     default_error_messages = {'invalid': 'Not a valid URL.'}
+    __slots__ = ("relative")
 
     def __init__(self, relative=False, **kwargs):
         String.__init__(self, **kwargs)
@@ -1086,6 +1122,8 @@ class Email(ValidatedField, String):
     :param kwargs: The same keyword arguments that :class:`String` receives.
     """
     default_error_messages = {'invalid': 'Not a valid email address.'}
+    __slots__ = ()
+
     def __init__(self, *args, **kwargs):
         String.__init__(self, *args, **kwargs)
         # Insert validation into self.validators so that multiple errors can be
@@ -1117,6 +1155,7 @@ class Method(Field):
         ``serialize`` to not be passed at all.
     """
     _CHECK_ATTRIBUTE = False
+    __slots__ = ('method_name', 'serialize_method_name', 'deserialize_method_name')
 
     def __init__(self, serialize=None, deserialize=None, method_name=None, **kwargs):
         if method_name is not None:
@@ -1174,6 +1213,7 @@ class Function(Field):
         Deprecated ``func`` parameter in favor of ``serialize``.
     """
     _CHECK_ATTRIBUTE = False
+    __slots__ = ('serialize_func', 'func', 'deserialize_func')
 
     def __init__(self, serialize=None, deserialize=None, func=None, **kwargs):
         if func:
@@ -1217,6 +1257,7 @@ class Constant(Field):
     .. versionadded:: 2.0.0
     """
     _CHECK_ATTRIBUTE = False
+    __slots__ = ('constant', 'missing', 'default')
 
     def __init__(self, constant, **kwargs):
         super(Constant, self).__init__(**kwargs)

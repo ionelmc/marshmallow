@@ -11,6 +11,7 @@ class FieldABC(object):
     """
     parent = None
     name = None
+    __slots__ = ()
 
     def serialize(self, attr, obj, accessor=None):
         raise NotImplementedError
@@ -35,6 +36,7 @@ class SchemaABC(object):
     root = None
     parent = None
     name = None
+    __slots__ = ()
 
     def dump(self, obj):
         raise NotImplementedError
