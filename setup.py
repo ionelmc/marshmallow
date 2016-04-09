@@ -1,47 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import glob
 import os
 import re
 import sys
-from os import path
+from glob import glob
+from os.path import splitext, dirname, join
+
 from setuptools import setup, find_packages, Extension
 
-LIBRARY_DIR = path.abspath(os.path.dirname(__file__))
-
-CYTHON = False
-JYTHON = 'java' in sys.platform
 try:
-    sys.pypy_version_info
-    PYPY = True
-except AttributeError:
-    PYPY = False
-
-if not PYPY and not JYTHON:
     try:
-        from Cython.Distutils import build_ext
-        CYTHON = True
-    except ImportError:
-        CYTHON = False
+        sys.pypy_version_info
+    except AttributeError:
+        if 'java' in sys.platform:
+            raise ImportError()
+    else:
+        raise ImportError()
 
-ext_modules = []
-cmdclass = {}
-if CYTHON:
-    def list_modules(dirname):
-        filenames = glob.glob(path.join(dirname, '*.py'))
-        module_names = []
-        for name in filenames:
-            module, ext = path.splitext(path.basename(name))
-            if module != '__init__':
-                module_names.append(module)
-        return module_names
-    ext_modules = [
-        Extension('marshmallow.' + ext, [path.join('marshmallow', ext + '.py')])
-        for ext in list_modules(path.join(LIBRARY_DIR, 'marshmallow'))]
-    cmdclass['build_ext'] = build_ext
+    # Allow installing package without any Cython available. This
+    # assumes you are going to include the .c files in your sdist.
+    import Cython
+except ImportError:
+    Cython = None
 
-
-EXTRA_REQUIREMENTS = ['python-dateutil', 'simplejson']
 
 def find_version(fname):
     """Attempts to find the version number in the file names fname.
@@ -67,6 +48,7 @@ def read(fname):
         content = fp.read()
     return content
 
+
 setup(
     name='marshmallow',
     version=__version__,
@@ -79,9 +61,20 @@ setup(
     packages=find_packages(exclude=('test*', 'examples')),
     package_dir={'marshmallow': 'marshmallow'},
     include_package_data=True,
-    extras_require={'reco': EXTRA_REQUIREMENTS},
-    cmdclass=cmdclass,
-    ext_modules=ext_modules,
+    extras_require={'reco': ['python-dateutil', 'simplejson']},
+    setup_requires=[
+        'cython',
+    ] if Cython else [],
+    ext_modules=[
+        Extension(
+            splitext(path.replace(os.sep, '.'))[0],
+            sources=[path],
+            include_dirs=[dirname(path)]
+        )
+        for root, _, _ in os.walk('marshmallow')
+        for path in glob(join(root, '*.py' if Cython else '*.c'))
+        if '__init__' not in path
+    ],
     license=read('LICENSE'),
     zip_safe=False,
     keywords=('serialization', 'rest', 'json', 'api', 'marshal',

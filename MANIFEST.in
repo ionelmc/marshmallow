@@ -1,11 +1,7 @@
 include *.rst LICENSE NOTICE
-recursive-include tests *
-recursive-include examples *
-recursive-include docs *
-recursive-exclude docs *.pyc
-recursive-exclude docs *.pyo
-recursive-exclude tests *.pyc
-recursive-exclude tests *.pyo
-recursive-exclude examples *.pyc
-recursive-exclude examples *.pyo
+graft tests
+graft examples
+graft docs
+graft marshmallow
+global-exclude *.py[cod] __pycache__ *.so *.dylib
 prune docs/_build
